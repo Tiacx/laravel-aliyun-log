@@ -41,11 +41,12 @@ ALIYUN_LOG_REDIS_KEY=AccessLogs
 
 | 配置项 | 说明 | 默认值 |
 |--------|------|--------|
-| `secret_routes` | 不记录请求参数的路由（精确匹配） | `[]` |
-| `ignore_routes` | 忽略的路由（前缀匹配） | `[]` |
-| `ignored_routes` | 忽略的路由（精确匹配） | `['/']` |
+| `secret_routes` | 不记录请求参数的路由（匹配规则同 `ignore_routes`） | `[]` |
+| `ignore_routes` | 忽略的路由，不记录访问日志 | `['/']` |
 | `sensitive_headers` | 不记录的请求头（不区分大小写） | `authorization`、`x-api-key` |
 | `service` | 日志 service 字段，`null` 时取应用名小写 | `null` |
+
+> `ignore_routes` / `secret_routes` 均支持通配：不含 `*` 为精确匹配，尾部 `*` 为前缀匹配（如 `/api/health*`），中间含 `*` 为模糊匹配（如 `/employee/*/avatar`）；`*` 匹配任意字符（含 `/`）。
 
 > 不做 UA 过滤：User-Agent 可被客户端伪造，按 UA 丢日志会让伪造请求绕过审计。
 

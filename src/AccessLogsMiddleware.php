@@ -27,20 +27,15 @@ class AccessLogsMiddleware
     {
         $requestStartTime = microtime(true);
         $response = $next($request);
-        $route = $request->getPathInfo();
 
-        foreach ($this->ignoreRoutes() as $prefix) {
-            if (str_starts_with($route, $prefix)) {
-                return $response;
-            }
+        if ($this->matchesAny($this->ignoreRoutes(), $request->getPathInfo())) {
+            return $response;
         }
 
         try {
             $data = $this->resolveData($request, $response, round(microtime(true) - $requestStartTime, 3));
 
-            if (! in_array($data['route'], $this->ignoredRoutes())) {
-                AliyunLogService::putLogAsync(intval($requestStartTime), $data, '', config('aliyunlog.store_access'));
-            }
+            AliyunLogService::putLogAsync(intval($requestStartTime), $data, '', config('aliyunlog.store_access'));
         } catch (Exception $e) {
             Log::error($e->getMessage(), $e->getTrace());
         }
@@ -56,7 +51,7 @@ class AccessLogsMiddleware
     protected function resolveData(Request $request, Response $response, float $duration): array
     {
         $route = $request->getPathInfo();
-        $params = in_array($route, $this->secretRoutes()) ? [] : $request->all();
+        $params = $this->matchesAny($this->secretRoutes(), $route) ? [] : $request->all();
 
         $user = $this->resolveUser($request);
 
@@ -111,7 +106,7 @@ class AccessLogsMiddleware
     }
 
     /**
-     * 这些路由不保存参数（精确匹配）
+     * 这些路由不保存参数
      */
     protected function secretRoutes(): array
     {
@@ -119,7 +114,7 @@ class AccessLogsMiddleware
     }
 
     /**
-     * 忽略这些路由（前缀匹配）
+     * 忽略这些路由，不记录访问日志
      */
     protected function ignoreRoutes(): array
     {
@@ -127,11 +122,25 @@ class AccessLogsMiddleware
     }
 
     /**
-     * 这些路由不记录访问日志（精确匹配）
+     * 路由是否命中任一模式：不含 * 为精确匹配；含 * 按通配符匹配，
+     * * 代表任意字符（可跨 /），如 '/api/health*'（前缀）、'/employee/123/avatar' 命中 '/employee/*' + '/avatar'（模糊）
      */
-    protected function ignoredRoutes(): array
+    protected function matchesAny(array $patterns, string $route): bool
     {
-        return config('aliyunlog.middleware.ignored_routes', []);
+        foreach ($patterns as $pattern) {
+            if (! str_contains($pattern, '*')) {
+                if ($pattern === $route) {
+                    return true;
+                }
+                continue;
+            }
+
+            if (preg_match('#^' . str_replace('\*', '.*', preg_quote($pattern, '#')) . '$#', $route) === 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

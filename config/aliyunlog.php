@@ -35,18 +35,15 @@ return [
 
     'middleware' => [
 
-        // 这些路由（精确匹配）不记录请求参数
+        // 这些路由不记录请求参数（匹配规则同 ignore_routes）
         'secret_routes' => [
             '/api/auth/login',
             '/api/admin/auth/login',
         ],
 
-        // 忽略这些路由（前缀匹配），不记录访问日志
+        // 忽略这些路由，不记录访问日志
+        // 不含 * 为精确匹配；尾部 * 为前缀匹配；中间含 * 为模糊匹配（* 匹配任意字符，可跨 /）
         'ignore_routes' => [
-        ],
-
-        // 这些路由（精确匹配）不记录访问日志
-        'ignored_routes' => [
             '/',
         ],
 
